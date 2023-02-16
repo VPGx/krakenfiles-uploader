@@ -1,5 +1,7 @@
 import requests
 import argparse
+import os
+import configparser
 
 # Step 1: Send a GET request to the API endpoint to check server availability
 
@@ -15,10 +17,7 @@ if response.status_code == 200:
     # Extract the URL and server access token from the API response
     serverurl = data['data']['url']
     server_access_token = data['data']['serverAccessToken']
-    
-    # Print the URL and server access token
-    print(f"url: {serverurl}")
-    print(f"serverAccessToken: {server_access_token}")
+
 else:
     print(f'Request failed with status code {response.status_code}')
 
@@ -30,20 +29,43 @@ parser.add_argument('file_path', metavar='file_path', type=str, help='The path t
 args = parser.parse_args()
 
 file_path = args.file_path
+
+if not os.path.exists(file_path):
+    print(f'Error: File not found at path {file_path}')
+    exit(1)
+
 file_name = file_path.split('/')[-1] # Extract the filename from the file path
 upload_url = f"{serverurl}"
 
+config = configparser.ConfigParser()
+if os.path.exists('config.ini'):
+    config.read('config.ini')
+if 'krakenfiles' in config and 'X-AUTH-TOKEN' in config['krakenfiles']:
+    auth_token = config['krakenfiles']['X-AUTH-TOKEN']
+else:
+    auth_token = input('Please enter your KrakenFiles X-AUTH-TOKEN: ')
+    config['krakenfiles'] = {'X-AUTH-TOKEN': auth_token}
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
+
+if not auth_token:
+    print('Error: X-AUTH-TOKEN not set.')
+    exit(1)
+
 headers = {
-    # ADD YOUR AUTHORIZATION TOKEN FROM KRAKENFILES PANEL BELOW :: https://krakenfiles.com/profile/api-access
-    'X-AUTH-TOKEN': "AUTH TOKEN"
+    'X-AUTH-TOKEN': auth_token
 }
 
 with open(file_path, 'rb') as f:
     files = {'file': (file_name, f)}
     data = {'serverAccessToken': server_access_token}
     response = requests.post(upload_url, headers=headers, data=data, files=files)
+    uploaddata = response.json()
 
 if response.status_code == 200:
-    print('File upload successful')
+    fileurl = uploaddata['data']['url']
+    filesize = uploaddata['data']['size']
+    print(f"File Uploaded at: {fileurl} with {filesize} bytes")
+
 else:
     print(f'File upload failed with status code {response.status_code}')
