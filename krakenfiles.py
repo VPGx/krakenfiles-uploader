@@ -65,7 +65,11 @@ with open(file_path, 'rb') as f:
 if response.status_code == 200:
     fileurl = uploaddata['data']['url']
     filesize = uploaddata['data']['size']
-    print(f"File Uploaded at: {fileurl} with {filesize} bytes")
+    file_size_mb = round(float(filesize) / (1024 * 1024), 2)
+    print(f"File Uploaded at: {fileurl} with {file_size_mb} MB")
+
+    with open("uploaded_files.txt", "a") as f:
+        f.write(f"{file_name}, {fileurl}, {file_size_mb} MB\n")
 
 else:
     print(f'File upload failed with status code {response.status_code}')
